@@ -27,8 +27,18 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     _refreshRedacteursList();
   }
 
+  @override
+  void dispose() {
+    _nomController.dispose();
+    _prenomController.dispose();
+    _emailController.dispose();
+    _rechercheController.dispose();
+    super.dispose();
+  }
+
   void _refreshRedacteursList() async {
     final data = await _dbManager.getAllRedacteurs();
+    if (!mounted) return;
     setState(() {
       _redacteursList = data;
       _appliquerRecherche();
@@ -76,6 +86,8 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
 
     try {
       await _dbManager.insertRedacteur(nouveau);
+      if (!mounted) return;
+
       _nomController.clear();
       _prenomController.clear();
       _emailController.clear();
@@ -84,6 +96,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
         const SnackBar(content: Text('Rédacteur ajouté avec succès !')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
@@ -97,7 +110,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Modifier Rédacteur'),
         content: SingleChildScrollView(
           child: Column(
@@ -111,7 +124,12 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              modifNomController.dispose();
+              modifPrenomController.dispose();
+              modifEmailController.dispose();
+              Navigator.pop(dialogContext);
+            },
             child: const Text('Annuler'),
           ),
           ElevatedButton(
@@ -122,9 +140,18 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
 
               try {
                 await _dbManager.updateRedacteur(redacteur);
-                Navigator.pop(context);
+                modifNomController.dispose();
+                modifPrenomController.dispose();
+                modifEmailController.dispose();
+
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
                 _refreshRedacteursList();
               } catch (e) {
+                modifNomController.dispose();
+                modifPrenomController.dispose();
+                modifEmailController.dispose();
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
                 );
@@ -140,12 +167,12 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
   void _confirmerSuppression(int id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Confirmation'),
         content: const Text('Voulez-vous vraiment supprimer ce rédacteur ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
@@ -153,9 +180,11 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
             onPressed: () async {
               try {
                 await _dbManager.deleteRedacteur(id);
-                Navigator.pop(context);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
                 _refreshRedacteursList();
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
                 );
